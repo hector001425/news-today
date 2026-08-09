@@ -80,3 +80,6 @@ Identidad tipo "cable de noticias" (wire service): ticker de titulares en vivo, 
 ## Licencia
 
 MIT — ver [LICENSE](LICENSE).
+
+---
+_Desplegado en Cloudflare Pages con auto-deploy desde GitHub._
