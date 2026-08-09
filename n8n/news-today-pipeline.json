@@ -1,5 +1,5 @@
 {
-  "name": "Pulso IA - Pipeline de noticias",
+  "name": "News Today - Pipeline de noticias",
   "nodes": [
     {
       "parameters": {
@@ -77,7 +77,7 @@
         "resource": "file",
         "operation": "create",
         "owner": "={{ $json.githubOwner }}",
-        "repository": "pulso-ia",
+        "repository": "news-today",
         "filePath": "={{ $json.filename }}",
         "fileContent": "={{ $json.content }}",
         "commitMessage": "=Nuevo articulo: {{ $json.title }}"
@@ -123,7 +123,7 @@
     {
       "parameters": {
         "resource": "tweet",
-        "text": "={{ $json.title }}\n\n{{ $json.dek }}\n\nhttps://pulso-ia.pages.dev/articulos/{{ $json.slug }}/"
+        "text": "={{ $json.title }}\n\n{{ $json.dek }}\n\nhttps://news-today.app/articulos/{{ $json.slug }}/"
       },
       "name": "Publicar en X/Twitter",
       "type": "n8n-nodes-base.twitter",

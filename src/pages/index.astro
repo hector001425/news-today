@@ -18,7 +18,7 @@ const formatter = new Intl.DateTimeFormat('es', { day: '2-digit', month: 'short'
 
 const tickerItems = allArticles.slice(0, 8);
 ---
-<Layout title="Pulso IA — Noticias de inteligencia artificial en español">
+<Layout title="News Today — Noticias de inteligencia artificial en español">
   <div class="ticker" role="marquee" aria-label="Últimos titulares">
     <div class="ticker__track">
       {tickerItems.map((a) => (
@@ -32,7 +32,7 @@ const tickerItems = allArticles.slice(0, 8);
 
   <header class="masthead">
     <div class="masthead__row">
-      <h1 class="masthead__title">Pulso <span>IA</span></h1>
+      <h1 class="masthead__title">News <span>Today</span></h1>
       <div class="masthead__meta">
         Actualizado automáticamente<br />
         {formatter.format(new Date())}
@@ -68,7 +68,7 @@ const tickerItems = allArticles.slice(0, 8);
   </main>
 
   <footer class="site-footer">
-    <span>Pulso IA — proyecto personal, contenido generado con apoyo de IA a partir de fuentes públicas</span>
-    <span>Repo: mi-sdr-lab · pulso-ia</span>
+    <span>News Today — proyecto personal, contenido generado con apoyo de IA a partir de fuentes públicas</span>
+    <span>news-today.app</span>
   </footer>
 </Layout>

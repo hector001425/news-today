@@ -1,8 +1,8 @@
-# Pulso IA
+# News Today
 
 Sitio de noticias de inteligencia artificial en español — con un pipeline automatizado (n8n + Claude) que busca, resume, traduce y publica noticias, y genera audio/video para redes sociales.
 
-> **Nombre provisional.** "Pulso IA" es un placeholder — el diseño y la estructura de datos no dependen del nombre, así que renombrarlo después es solo cambiar texto en `src/pages/index.astro` y el `package.json`.
+Dominio: **news-today.app**
 
 ## Arquitectura general
 
@@ -17,7 +17,7 @@ n8n (orquestador, corriendo en GCP)
   └─ publica en redes sociales
 ```
 
-El detalle completo del pipeline está en [`n8n/README.md`](n8n/README.md) y la plantilla importable en [`n8n/pulso-ia-pipeline.json`](n8n/pulso-ia-pipeline.json).
+El detalle completo del pipeline está en [`n8n/README.md`](n8n/README.md) y la plantilla importable en [`n8n/news-today-pipeline.json`](n8n/news-today-pipeline.json).
 
 ## El sitio (este repo)
 
@@ -33,7 +33,7 @@ npm run dev
 ### Estructura
 
 ```
-pulso-ia/
+news-today/
 ├── src/
 │   ├── content/articles/   # cada noticia es un .md con frontmatter
 │   ├── content/config.ts   # esquema de datos del artículo (validado)
@@ -42,7 +42,7 @@ pulso-ia/
 │   ├── pages/articulos/[slug].astro
 │   └── styles/global.css
 ├── n8n/                     # pipeline de automatización
-│   ├── pulso-ia-pipeline.json
+│   ├── news-today-pipeline.json
 │   └── README.md
 ├── public/
 └── docs/
@@ -71,7 +71,7 @@ Los dos archivos en `src/content/articles/ejemplo-*.md` son de muestra — borra
 
 ## Despliegue
 
-Pensado para **Cloudflare Pages** (build: `npm run build`, output: `dist`) — ver instrucciones en `n8n/README.md`. También podés usar Vercel o GitHub Pages sin cambios, ya que es un sitio estático estándar.
+Pensado para **Cloudflare Pages** (build: `npm run build`, output: `dist`), con el dominio propio `news-today.app` conectado como Custom Domain — ver instrucciones paso a paso en `n8n/README.md`. También podés usar Vercel o GitHub Pages sin cambios, ya que es un sitio estático estándar.
 
 ## Diseño
 
