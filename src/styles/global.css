@@ -1,0 +1,211 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,600;0,6..72,700;1,6..72,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --paper: #efebe2;
+  --paper-raised: #f7f4ec;
+  --ink: #16171b;
+  --ink-soft: #4b4a45;
+  --wire: #2440e0;
+  --flash: #d6472b;
+  --line: #c9c3b2;
+
+  --font-display: 'Newsreader', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+body {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--wire);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--wire);
+  outline-offset: 2px;
+}
+
+/* ---------- Ticker (elemento distintivo) ---------- */
+
+.ticker {
+  background: var(--ink);
+  color: var(--paper-raised);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+
+.ticker__track {
+  display: inline-block;
+  padding-left: 100%;
+  animation: ticker-scroll 42s linear infinite;
+}
+
+.ticker__item {
+  display: inline-block;
+  padding: 0.55rem 2rem;
+}
+
+.ticker__item::before {
+  content: '●';
+  color: var(--flash);
+  margin-right: 0.6rem;
+  font-size: 0.6rem;
+  vertical-align: middle;
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker__track { animation: none; }
+  .ticker { overflow-x: auto; }
+}
+
+/* ---------- Masthead ---------- */
+
+.masthead {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2.4rem 1.5rem 1.4rem;
+  border-bottom: 3px solid var(--ink);
+}
+
+.masthead__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.masthead__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.masthead__title span {
+  color: var(--wire);
+  font-style: italic;
+}
+
+.masthead__meta {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+.masthead__dek {
+  font-family: var(--font-body);
+  color: var(--ink-soft);
+  margin-top: 0.5rem;
+  font-size: 1.02rem;
+  max-width: 60ch;
+}
+
+/* ---------- Grid de artículos ---------- */
+
+.feed {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+
+@media (max-width: 860px) {
+  .feed { grid-template-columns: 1fr; }
+}
+
+.card {
+  border-top: 1px solid var(--line);
+  padding: 1.4rem 1.4rem 1.6rem 0;
+  margin-right: 1.4rem;
+}
+
+.card + .card { border-left: 1px solid var(--line); padding-left: 1.4rem; }
+
+.card__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--wire);
+  margin-bottom: 0.6rem;
+}
+
+.card__eyebrow time { color: var(--ink-soft); text-transform: none; letter-spacing: 0; }
+
+.card__flash {
+  background: var(--flash);
+  color: var(--paper-raised);
+  padding: 0.1rem 0.4rem;
+  font-size: 0.68rem;
+}
+
+.card__title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.25;
+  margin: 0 0 0.5rem;
+}
+
+.card__title a { color: var(--ink); }
+.card__title a:hover { color: var(--wire); text-decoration: none; }
+
+.card__dek {
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0 0 0.7rem;
+}
+
+.card__source {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+/* ---------- Footer ---------- */
+
+.site-footer {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1.6rem 1.5rem 3rem;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}

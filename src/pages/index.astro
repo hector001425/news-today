@@ -1,0 +1,74 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+
+const allArticles = (await getCollection('articles')).sort(
+  (a, b) => b.data.published_at.valueOf() - a.data.published_at.valueOf()
+);
+
+const categoryLabels: Record<string, string> = {
+  modelos: 'Modelos',
+  negocios: 'Negocios',
+  investigacion: 'Investigación',
+  politica: 'Política y regulación',
+  producto: 'Producto',
+};
+
+const formatter = new Intl.DateTimeFormat('es', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+const tickerItems = allArticles.slice(0, 8);
+---
+<Layout title="Pulso IA — Noticias de inteligencia artificial en español">
+  <div class="ticker" role="marquee" aria-label="Últimos titulares">
+    <div class="ticker__track">
+      {tickerItems.map((a) => (
+        <span class="ticker__item">{a.data.title}</span>
+      ))}
+      {tickerItems.map((a) => (
+        <span class="ticker__item" aria-hidden="true">{a.data.title}</span>
+      ))}
+    </div>
+  </div>
+
+  <header class="masthead">
+    <div class="masthead__row">
+      <h1 class="masthead__title">Pulso <span>IA</span></h1>
+      <div class="masthead__meta">
+        Actualizado automáticamente<br />
+        {formatter.format(new Date())}
+      </div>
+    </div>
+    <p class="masthead__dek">
+      Lo último en inteligencia artificial — modelos, negocios, investigación y regulación — resumido en español, todos los días.
+    </p>
+  </header>
+
+  <main class="feed">
+    {allArticles.length === 0 && (
+      <p style="padding: 2rem; font-family: var(--font-mono); color: var(--ink-soft);">
+        Todavía no hay artículos. Agregá archivos .md en src/content/articles/ o conectá el pipeline de n8n descrito en /n8n.
+      </p>
+    )}
+    {allArticles.map((article) => (
+      <article class="card">
+        <div class="card__eyebrow">
+          {article.data.breaking && <span class="card__flash">Última hora</span>}
+          <span>{categoryLabels[article.data.category]}</span>
+          <time datetime={article.data.published_at.toISOString()}>
+            {formatter.format(article.data.published_at)}
+          </time>
+        </div>
+        <h2 class="card__title">
+          <a href={`/articulos/${article.slug}/`}>{article.data.title}</a>
+        </h2>
+        <p class="card__dek">{article.data.dek}</p>
+        <p class="card__source">Fuente: {article.data.source_name}</p>
+      </article>
+    ))}
+  </main>
+
+  <footer class="site-footer">
+    <span>Pulso IA — proyecto personal, contenido generado con apoyo de IA a partir de fuentes públicas</span>
+    <span>Repo: mi-sdr-lab · pulso-ia</span>
+  </footer>
+</Layout>

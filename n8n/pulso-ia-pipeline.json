@@ -1,0 +1,167 @@
+{
+  "name": "Pulso IA - Pipeline de noticias",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "hours", "hoursInterval": 6 } ] }
+      },
+      "name": "Disparador programado (cada 6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [ -1200, 0 ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://news.google.com/rss/search?q=artificial+intelligence+when:1d&hl=en-US&gl=US&ceid=US:en",
+        "options": {}
+      },
+      "name": "Buscar noticias (RSS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "notes": "Reemplazar por NewsAPI, Bing News Search API, o varias fuentes RSS combinadas con un nodo Merge.",
+      "position": [ -980, 0 ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parsea el XML del RSS a una lista de items { title, link, pubDate }\n// y filtra duplicados ya publicados (comparar contra un nodo de estado / DB externa)\nreturn items;"
+      },
+      "name": "Parsear y deduplicar",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [ -760, 0 ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Procesar noticia por noticia",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [ -540, 0 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "anthropicApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 1200,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Resumí esta noticia de inteligencia artificial en español neutro, en formato periodístico. Devolvé SOLO un JSON con las claves: title (titular, max 90 caracteres), dek (bajada, max 160 caracteres), category (uno de: modelos, negocios, investigacion, politica, producto), body_markdown (3-4 parrafos), breaking (boolean). Noticia original:\\n\\nTitulo: {{ $json.title }}\\nURL: {{ $json.link }}\\nFecha: {{ $json.pubDate }}\"\n    }\n  ]\n}"
+      },
+      "name": "Claude: resumir y traducir",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "notes": "Requiere credencial Anthropic API (API key) configurada en n8n. Ajustar el prompt según calidad deseada.",
+      "position": [ -320, 0 ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Toma la respuesta de Claude (texto JSON) y arma el archivo .md con frontmatter\nconst claudeText = items[0].json.content[0].text;\nconst parsed = JSON.parse(claudeText);\nconst slug = parsed.title.toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');\nconst frontmatter = `---\ntitle: \"${parsed.title.replace(/\"/g, '\\\\\"')}\"\ndek: \"${parsed.dek.replace(/\"/g, '\\\\\"')}\"\ncategory: \"${parsed.category}\"\nsource_name: \"${$node['Procesar noticia por noticia'].json.sourceName || 'Fuente'}\"\nsource_url: \"${$node['Procesar noticia por noticia'].json.link}\"\npublished_at: \"${new Date().toISOString()}\"\nbreaking: ${parsed.breaking}\ngenerated_by: \"pipeline\"\n---\n\n${parsed.body_markdown}\n`;\nreturn [{ json: { slug, filename: `src/content/articles/${slug}.md`, content: frontmatter, title: parsed.title, dek: parsed.dek } }];"
+      },
+      "name": "Armar Markdown + frontmatter",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [ -100, 0 ]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "create",
+        "owner": "={{ $json.githubOwner }}",
+        "repository": "pulso-ia",
+        "filePath": "={{ $json.filename }}",
+        "fileContent": "={{ $json.content }}",
+        "commitMessage": "=Nuevo articulo: {{ $json.title }}"
+      },
+      "name": "Publicar en GitHub (commit)",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1,
+      "notes": "Requiere credencial GitHub (token con permiso de escritura). Al hacer commit, Cloudflare Pages redespliega el sitio automaticamente.",
+      "position": [ 120, -140 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/{{$json.voiceId}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "elevenLabsApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.title }}. {{ $json.dek }}\",\n  \"model_id\": \"eleven_multilingual_v2\"\n}"
+      },
+      "name": "Generar audio (TTS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "notes": "Alternativas: Google Cloud Text-to-Speech (ya tenés GCP), Azure Speech, o el propio ElevenLabs. Devuelve audio binario para el siguiente paso.",
+      "position": [ 120, 40 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"template_id\": \"REEMPLAZAR_CON_TU_TEMPLATE\",\n  \"modifications\": {\n    \"titular\": \"{{ $json.title }}\",\n    \"bajada\": \"{{ $json.dek }}\",\n    \"audio\": \"{{ $binary.data.fileName }}\"\n  }\n}"
+      },
+      "name": "Generar video corto (redes)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "notes": "Servicios posibles: Creatomate, Shotstack, o un pipeline propio con ffmpeg corriendo en GCP Cloud Run. Genera un video vertical corto con el titular + audio.",
+      "position": [ 340, 40 ]
+    },
+    {
+      "parameters": {
+        "resource": "tweet",
+        "text": "={{ $json.title }}\n\n{{ $json.dek }}\n\nhttps://pulso-ia.pages.dev/articulos/{{ $json.slug }}/"
+      },
+      "name": "Publicar en X/Twitter",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "notes": "Requiere credencial de la red social. Duplicar este nodo para LinkedIn, Instagram (vía API de Meta), etc.",
+      "position": [ 560, 40 ]
+    }
+  ],
+  "connections": {
+    "Disparador programado (cada 6h)": {
+      "main": [ [ { "node": "Buscar noticias (RSS)", "type": "main", "index": 0 } ] ]
+    },
+    "Buscar noticias (RSS)": {
+      "main": [ [ { "node": "Parsear y deduplicar", "type": "main", "index": 0 } ] ]
+    },
+    "Parsear y deduplicar": {
+      "main": [ [ { "node": "Procesar noticia por noticia", "type": "main", "index": 0 } ] ]
+    },
+    "Procesar noticia por noticia": {
+      "main": [ [ { "node": "Claude: resumir y traducir", "type": "main", "index": 0 } ] ]
+    },
+    "Claude: resumir y traducir": {
+      "main": [ [ { "node": "Armar Markdown + frontmatter", "type": "main", "index": 0 } ] ]
+    },
+    "Armar Markdown + frontmatter": {
+      "main": [
+        [
+          { "node": "Publicar en GitHub (commit)", "type": "main", "index": 0 },
+          { "node": "Generar audio (TTS)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Generar audio (TTS)": {
+      "main": [ [ { "node": "Generar video corto (redes)", "type": "main", "index": 0 } ] ]
+    },
+    "Generar video corto (redes)": {
+      "main": [ [ { "node": "Publicar en X/Twitter", "type": "main", "index": 0 } ] ]
+    }
+  },
+  "meta": { "templateNote": "Plantilla de partida — requiere credenciales propias (Anthropic, GitHub, TTS, red social) configuradas en n8n antes de activar." }
+}
