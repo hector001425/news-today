@@ -41,11 +41,12 @@
     },
     {
       "parameters": {
-        "functionCode": "// Aplana el RSS ya convertido a JSON en una lista de noticias individuales\n// y calcula un slug ESTABLE (hash del link) para que re-ejecutar el pipeline\n// sobre la misma noticia siempre produzca el mismo archivo -> GitHub rechaza\n// el duplicado en el paso de commit en vez de publicarlo dos veces.\n\nfunction firstText(v) {\n  if (v === undefined || v === null) return '';\n  if (Array.isArray(v)) return firstText(v[0]);\n  if (typeof v === 'object') return v._ || '';\n  return String(v);\n}\n\nfunction slugify(str) {\n  return str.toLowerCase()\n    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/[^a-z0-9]+/g, '-')\n    .replace(/(^-|-$)/g, '')\n    .slice(0, 60);\n}\n\nfunction hashStr(str) {\n  let hash = 5381;\n  for (let i = 0; i < str.length; i++) {\n    hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;\n  }\n  return hash.toString(16).slice(0, 8);\n}\n\nconst raw = items[0].json;\nconst channel = (raw.rss && raw.rss.channel) ? raw.rss.channel[0] || raw.rss.channel : {};\nconst rawItems = channel.item || [];\nconst list = Array.isArray(rawItems) ? rawItems : [rawItems];\n\nconst out = list.slice(0, 5).map((it) => {\n  const title = firstText(it.title);\n  const link = firstText(it.link);\n  const pubDate = firstText(it.pubDate);\n  const sourceObj = Array.isArray(it.source) ? it.source[0] : it.source;\n  const sourceName = (sourceObj && sourceObj._) || (typeof sourceObj === 'string' ? sourceObj : 'Fuente');\n  const slug = `${slugify(title)}-${hashStr(link || title)}`;\n  return { json: { title, link, pubDate, sourceName: String(sourceName), slug } };\n});\n\nreturn out;"
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aplana el RSS ya convertido a JSON en una lista de noticias individuales\n// y calcula un slug ESTABLE (hash del link) para que re-ejecutar el pipeline\n// sobre la misma noticia siempre produzca el mismo archivo -> GitHub rechaza\n// el duplicado en el paso de commit en vez de publicarlo dos veces.\n\nfunction firstText(v) {\n  if (v === undefined || v === null) return '';\n  if (Array.isArray(v)) return firstText(v[0]);\n  if (typeof v === 'object') return v._ || '';\n  return String(v);\n}\n\nfunction slugify(str) {\n  return str.toLowerCase()\n    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/[^a-z0-9]+/g, '-')\n    .replace(/(^-|-$)/g, '')\n    .slice(0, 60);\n}\n\nfunction hashStr(str) {\n  let hash = 5381;\n  for (let i = 0; i < str.length; i++) {\n    hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;\n  }\n  return hash.toString(16).slice(0, 8);\n}\n\nconst raw = $input.first().json;\nconst channel = (raw.rss && raw.rss.channel) ? (raw.rss.channel[0] || raw.rss.channel) : {};\nconst rawItems = channel.item || [];\nconst list = Array.isArray(rawItems) ? rawItems : [rawItems];\n\nreturn list.slice(0, 5).map((it) => {\n  const title = firstText(it.title);\n  const link = firstText(it.link);\n  const pubDate = firstText(it.pubDate);\n  const sourceObj = Array.isArray(it.source) ? it.source[0] : it.source;\n  const sourceName = (sourceObj && sourceObj._) || (typeof sourceObj === 'string' ? sourceObj : 'Fuente');\n  const slug = `${slugify(title)}-${hashStr(link || title)}`;\n  return { json: { title, link, pubDate, sourceName: String(sourceName), slug } };\n});"
       },
       "name": "Extraer items del RSS",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [ -740, 0 ]
     },
     {
@@ -72,11 +73,12 @@
     },
     {
       "parameters": {
-        "functionCode": "// Toma la respuesta de Claude para ESTE item y la combina con los datos\n// originales del item equivalente en 'Extraer items del RSS' (título real,\n// link fuente, slug estable) para armar el .md final con frontmatter.\nconst claudeText = items[0].json.content[0].text;\nconst parsed = JSON.parse(claudeText);\nconst orig = $node['Extraer items del RSS'].json;\n\nconst frontmatter = `---\ntitle: \"${parsed.title.replace(/\"/g, '\\\\\"')}\"\ndek: \"${parsed.dek.replace(/\"/g, '\\\\\"')}\"\ncategory: \"${parsed.category}\"\nsource_name: \"${orig.sourceName}\"\nsource_url: \"${orig.link}\"\npublished_at: \"${new Date().toISOString()}\"\nbreaking: ${parsed.breaking}\ngenerated_by: \"pipeline\"\n---\n\n${parsed.body_markdown}\n`;\n\nreturn [{ json: { slug: orig.slug, filename: `src/content/articles/${orig.slug}.md`, content: frontmatter, title: parsed.title, dek: parsed.dek } }];"
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Toma la respuesta de Claude para ESTE item y la combina con los datos\n// originales del item equivalente en 'Extraer items del RSS' (título real,\n// link fuente, slug estable) para armar el .md final con frontmatter.\nconst claudeText = $input.item.json.content[0].text;\nconst parsed = JSON.parse(claudeText);\nconst orig = $('Extraer items del RSS').item.json;\n\nconst frontmatter = `---\ntitle: \"${parsed.title.replace(/\"/g, '\\\\\"')}\"\ndek: \"${parsed.dek.replace(/\"/g, '\\\\\"')}\"\ncategory: \"${parsed.category}\"\nsource_name: \"${orig.sourceName}\"\nsource_url: \"${orig.link}\"\npublished_at: \"${new Date().toISOString()}\"\nbreaking: ${parsed.breaking}\ngenerated_by: \"pipeline\"\n---\n\n${parsed.body_markdown}\n`;\n\nreturn { json: { slug: orig.slug, filename: `src/content/articles/${orig.slug}.md`, content: frontmatter, title: parsed.title, dek: parsed.dek } };"
       },
       "name": "Armar Markdown + frontmatter",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [ -300, 0 ]
     },
     {
