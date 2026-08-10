@@ -130,8 +130,31 @@
           "name": "Google Cloud TTS (API key)"
         }
       },
-      "notes": "Google Cloud Text-to-Speech, voz neural en español. Devuelve { audioContent: <mp3 en base64> } en $json.audioContent -- listo para pasarle a Creatomate como data URI.",
+      "notes": "Google Cloud Text-to-Speech, voz neural en español. Devuelve { audioContent: <mp3 en base64> } en $json.audioContent.",
       "position": [ -80, 100 ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/hector001425/news-today/contents/public/audio/{{ $('Armar Markdown + frontmatter').item.json.slug }}.mp3",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": {{ JSON.stringify('Audio: ' + $('Armar Markdown + frontmatter').item.json.title) }},\n  \"content\": {{ JSON.stringify($json.audioContent) }},\n  \"branch\": \"main\"\n}"
+      },
+      "name": "Publicar audio (commit)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "continueOnFail": true,
+      "credentials": {
+        "githubApi": {
+          "id": "eEXU1BIl8VyzkUOM",
+          "name": "GitHub account 2"
+        }
+      },
+      "notes": "Usa la API de contenidos de GitHub directo (no el nodo GitHub de n8n) porque audioContent YA viene en base64 desde Google TTS -- el nodo GitHub normal lo re-codificaría en base64 de nuevo y lo corrompería. raw.githubusercontent.com sirve el archivo casi al instante después del commit, sin esperar el deploy de Cloudflare Pages.",
+      "position": [ 140, 100 ]
     },
     {
       "parameters": {
@@ -141,7 +164,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"template_id\": \"4a1d7b6a-0c13-423a-b37c-46211fbf5d2f\",\n  \"modifications\": {\n    \"titular\": {{ JSON.stringify($('Armar Markdown + frontmatter').item.json.title) }},\n    \"bajada\": {{ JSON.stringify($('Armar Markdown + frontmatter').item.json.dek) }},\n    \"audio\": \"data:audio/mp3;base64,{{ $json.audioContent }}\"\n  }\n}"
+        "jsonBody": "={\n  \"template_id\": \"4a1d7b6a-0c13-423a-b37c-46211fbf5d2f\",\n  \"modifications\": {\n    \"titular\": {{ JSON.stringify($('Armar Markdown + frontmatter').item.json.title) }},\n    \"bajada\": {{ JSON.stringify($('Armar Markdown + frontmatter').item.json.dek) }},\n    \"audio\": {{ JSON.stringify('https://raw.githubusercontent.com/hector001425/news-today/main/public/audio/' + $('Armar Markdown + frontmatter').item.json.slug + '.mp3') }}\n  }\n}"
       },
       "name": "Generar video (Creatomate)",
       "type": "n8n-nodes-base.httpRequest",
@@ -153,8 +176,8 @@
           "name": "Header Auth account"
         }
       },
-      "notes": "Template 'News Today - Reel vertical' (9:16) con 3 elementos: titular, bajada, audio. El render es asíncrono -- esta llamada dispara el render y devuelve el estado inicial (planned/processing), no el video terminado. Revisar el resultado en el dashboard de Creatomate o el API Log. Publicación automática en redes queda para una fase 3.",
-      "position": [ 140, 100 ]
+      "notes": "Template 'News Today - Reel vertical' (9:16) con 3 elementos: titular, bajada, audio (URL real de raw.githubusercontent.com, Creatomate no acepta data: URIs). El render es asíncrono -- esta llamada dispara el render y devuelve el estado inicial (planned/processing), no el video terminado. Revisar el resultado en el dashboard de Creatomate o el API Log. Publicación automática en redes queda para una fase 3.",
+      "position": [ 360, 100 ]
     }
   ],
   "connections": {
@@ -182,6 +205,9 @@
       ]
     },
     "Generar audio (TTS)": {
+      "main": [ [ { "node": "Publicar audio (commit)", "type": "main", "index": 0 } ] ]
+    },
+    "Publicar audio (commit)": {
       "main": [ [ { "node": "Generar video (Creatomate)", "type": "main", "index": 0 } ] ]
     }
   },
