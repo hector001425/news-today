@@ -4,7 +4,7 @@ dek: "The Motley Fool compara las trayectorias de ingresos de dos empresas clave
 category: "negocios"
 source_name: "The Motley Fool"
 source_url: "https://news.google.com/rss/articles/CBMi6AFBVV95cUxQZXR5U0swWExJNFE0dFhEU2hGdV9MWmM4bHBxN3pKWG1QMVlsMVJMNUFuR3kzTmFOZmR6MzJfYzZtdDFULVJabXlhRzdkcVZnYkJBNk9rdkhFUjVubHBNd3JLUVNjNnpVRW56S2hsSTRFRWR0WXU5cDhSTVdPX3ZUd3RtTWtHR19iS1RqLU1mOTRYMXpNVDh6SlhtYkRHbzlidkZackhoODVSckRWQWN5d2lDb0Z1TThjY2xuUW5Bc1hkYXd4WmJGTF96dlRaNDNsQVRhcjgwMnU5cnd4S1pyenlvNTNxcHlz?oc=5"
-published_at: "2026-08-10T00:02:12.048Z"
+published_at: 2026-08-10T00:02:12.048Z
 breaking: false
 generated_by: "pipeline"
 ---

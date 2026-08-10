@@ -4,7 +4,7 @@ dek: "La industria de la construcción y el transporte pesado incorpora IA para 
 category: "tecnologia"
 source_name: "Crane & Transport Briefing"
 source_url: "https://news.google.com/rss/articles/CBMie0FVX3lxTFBFbklMd1hKR05iUlY5VXRKRUc1aHhKSVkxeFVsdDR3TVdGV2licnYyZktacV8zRF9LaXltdFpfWWZVRXpjYnBNdTg1cVRLNm90UzhITktFVHNWLThLdThfTTgtV3ZnVGYwa21SSFlFM2doNzBtUThJUERMWQ?oc=5"
-published_at: "2026-08-10T00:02:12.055Z"
+published_at: 2026-08-10T00:02:12.055Z
 breaking: false
 generated_by: "pipeline"
 ---
