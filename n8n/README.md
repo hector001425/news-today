@@ -1,49 +1,80 @@
 # Pipeline de automatización (n8n)
 
-`news-today-pipeline.json` es una plantilla importable en n8n con el flujo de **fase 1** (búsqueda + redacción + publicación, sin audio/video/redes todavía):
+`news-today-pipeline.json` es el workflow real que corre en producción (no es solo una plantilla de ejemplo — es el que está importado y activo en la VM). Cubre **fase 1 y fase 2 completas**: búsqueda, redacción, publicación, audio y video. Falta **fase 3**: publicación automática en redes sociales.
 
 ```
-Cada 2h → buscar noticias (IA / LLM / data / tecnología, RSS Google News) → extraer items
-    → por cada noticia: Claude resume, traduce y categoriza → arma Markdown con frontmatter
-        → commit a GitHub (news-today/src/content/articles/) → Cloudflare Pages redespliega solo
+Cada 2h → buscar noticias (IA / LLM / data / tecnología, RSS Google News)
+    → convertir RSS a JSON → extraer hasta 5 items (slug estable por hash del link)
+    → por cada noticia:
+        Claude resume, traduce y categoriza
+            → arma Markdown con frontmatter
+                ├─→ commit a GitHub (src/content/articles/*.md) → Cloudflare Pages redespliega solo
+                └─→ Google Cloud TTS genera audio narrado
+                        → commit del .mp3 a GitHub (public/audio/*.mp3)
+                            → Creatomate renderiza el reel vertical (titular + bajada + audio)
+                                └─→ ⏳ fase 3: publicar el video en redes sociales (pendiente)
 ```
 
-El slug de cada artículo se deriva de un hash del link original, así que es estable entre corridas: si el pipeline vuelve a ver la misma noticia, el commit a GitHub falla porque el archivo ya existe (`continueOnFail` en ese nodo evita que eso corte el resto del batch) — es el mecanismo de deduplicación.
+## Nodos del workflow
 
-TTS, video corto y publicación en redes sociales quedan para una fase 2, una vez que este flujo esté probado y estable.
+| Nodo | Qué hace |
+|---|---|
+| Disparador programado (cada 2h) | Schedule Trigger — dispara todo el flujo |
+| Buscar noticias (RSS) | GET a Google News RSS filtrado a IA/LLM/data/tech, últimas 24h |
+| Convertir RSS a JSON | Nodo XML nativo de n8n |
+| Extraer items del RSS | Code node — aplana hasta 5 noticias, calcula `slug` estable (hash del link + título) |
+| Claude: resumir y traducir | HTTP Request a la API de Anthropic — devuelve título/bajada/categoría/cuerpo en JSON |
+| Armar Markdown + frontmatter | Code node — arma el `.md` final, limpia bloques ```json que a veces devuelve Claude |
+| Publicar en GitHub (commit) | Crea el archivo en `src/content/articles/` — `continueOnFail`, si el slug ya existe (noticia repetida) el commit falla solo y no rompe el batch: es el mecanismo de deduplicación |
+| Generar audio (TTS) | Google Cloud Text-to-Speech, voz `es-US-Neural2-B` |
+| Publicar audio (commit) | Sube el `.mp3` a `public/audio/` vía la API de contenidos de GitHub directo (no el nodo GitHub nativo — el audio ya viene en base64 desde Google TTS, y el nodo nativo lo re-codificaría y lo corrompería) |
+| Generar video (Creatomate) | Dispara un render async del template "News Today - Reel vertical" (9:16), con el audio real ya público en `raw.githubusercontent.com` |
 
-## Cómo importarlo
+## Cómo importarlo / actualizarlo
 
-1. En tu instancia de n8n: **Workflows → Import from File** → seleccioná `news-today-pipeline.json`.
-2. Configurá las credenciales que pide cada nodo (ver tabla abajo).
-3. Ajustá los nodos marcados como "plantilla" (búsqueda de noticias, servicio de video) según lo que prefieras usar.
-4. Activá el workflow.
+1. En tu instancia de n8n: **Workflows → Import from File** → seleccioná `news-today-pipeline.json`. Si ya existe un workflow con el mismo `id`, lo actualiza en vez de duplicarlo.
+2. **Importante:** reimportar borra la asignación de credenciales de los nodos que no la tengan "horneada" en el JSON (ver más abajo). Después de reimportar, siempre verificar en la UI que Claude, GitHub, TTS y Creatomate sigan con su credencial asignada.
+3. Reimportar también **desactiva** el workflow — hay que volver a activarlo (toggle "Active") y reiniciar el contenedor de n8n para que tome el cambio (`docker restart n8n-n8n-1`).
 
 ## Dónde corre n8n
 
-VM `n8n-news-today` (Compute Engine, `e2-small`, Debian) en el proyecto GCP `news-today-pipeline`, con n8n + Postgres vía Docker Compose. Sin IP pública — el acceso es por túnel IAP (`gcloud compute start-iap-tunnel n8n-news-today 5678 --local-host-port=localhost:5678 --project=news-today-pipeline --zone=us-central1-a`), nunca expuesto directo a internet.
+VM `n8n-news-today` (Compute Engine, `e2-small`, Debian 12) en el proyecto GCP `news-today-pipeline`, con n8n + Postgres vía Docker Compose. **Sin IP pública** — el acceso es por túnel IAP:
 
-## Credenciales necesarias (fase 1)
+```
+gcloud compute start-iap-tunnel n8n-news-today 5678 --local-host-port=localhost:5678 --project=news-today-pipeline --zone=us-central1-a
+```
 
-| Nodo | Servicio | Notas |
+Con el túnel abierto, la UI queda en `http://localhost:5678`. Cloud NAT (`nat-router` / `nat-config`, región `us-central1`) le da salida a internet a la VM sin exponerla con IP pública entrante.
+
+## Credenciales configuradas (fase 1 + 2, ya activas)
+
+| Nodo | Tipo de credencial en n8n | Servicio |
 |---|---|---|
-| Claude: resumir y traducir | Anthropic API | API key propia, modelo `claude-sonnet-4-6` sugerido por costo/calidad |
-| Publicar en GitHub | GitHub | Token con permiso `repo` sobre `news-today` |
+| Claude: resumir y traducir | Anthropic API | console.anthropic.com |
+| Publicar en GitHub / Publicar audio | GitHub API (token fine-grained, permiso `Contents: Read and write` solo sobre `news-today`) | github.com/settings/personal-access-tokens |
+| Generar audio (TTS) | Header/Query Auth (API key restringida solo a `texttospeech.googleapis.com`) | Mismo proyecto GCP (`news-today-pipeline`) |
+| Generar video (Creatomate) | Header Auth (`Authorization: Bearer <key>`) | creatomate.com — template id `4a1d7b6a-0c13-423a-b37c-46211fbf5d2f` ("News Today - Reel vertical", plan gratis, 270×480) |
 
-## Credenciales de fase 2 (pendiente)
+## Fase 3 — publicación en redes sociales (pendiente)
 
-| Nodo | Servicio | Notas |
-|---|---|---|
-| Generar audio (TTS) | ElevenLabs o Google Cloud TTS | Con GCP ya disponible, Google Cloud Text-to-Speech es la opción más directa (misma cuenta de facturación) |
-| Generar video corto | Creatomate / Shotstack / ffmpeg propio | Cualquiera con API de renderizado por template; para control total, un servicio propio en Cloud Run con ffmpeg |
-| Publicar en redes | Twitter/X, LinkedIn, Meta, etc. | Un nodo por red social — n8n trae nodos nativos para varias |
+Ver el detalle completo de qué necesita cada red social (cuentas, developer apps, quién hace qué) en la sección "Estado actual (roadmap)" del [`README.md`](../README.md) principal. Resumen del lado de n8n: una vez que exista la cuenta de developer aprobada en cada plataforma, el patrón es siempre el mismo —
+
+1. Conectar la credencial OAuth de esa red en n8n (login vía navegador, botón "Connect" en la credencial)
+2. Agregar un nodo después de "Generar video (Creatomate)" — hay que esperar/consultar el estado del render (es async, `status: planned` → `succeeded`) antes de tener la URL final del video para publicar
+3. n8n trae nodos nativos para Twitter/X y otras redes; para las que no, HTTP Request directo a su API igual que hicimos con TTS y Creatomate
+
+## Problemas conocidos
+
+- **Colisión de escritura en GitHub**: cuando el pipeline procesa varias noticias casi en simultáneo, a veces el commit del audio (`Publicar audio (commit)`) falla con un conflicto de rama ("is at X but expected Y") porque dos commits intentan actualizar `main` al mismo tiempo. No rompe el pipeline (`continueOnFail`), simplemente ese video no se genera ese ciclo — se reintenta solo si la noticia sigue apareciendo en el RSS.
+- **Resolución del video limitada a 270×480**: es el límite del plan gratis de Creatomate. Pasar a un plan pago para 1080×1920 real.
+- **Repo público**: `news-today` tiene que ser público para que `raw.githubusercontent.com` sirva el audio sin autenticación (Creatomate no puede pasar un token de GitHub). No hay secretos en el repo — las credenciales viven todas en n8n.
 
 ## Despliegue del sitio (Cloudflare Pages)
 
-1. Conectá el repo `news-today` a Cloudflare Pages (Dashboard → Workers & Pages → Create → Pages → Connect to Git).
+1. Repo `news-today` conectado a Cloudflare Pages (Dashboard → Workers & Pages → `news-today` → Settings → Builds & deployments → Connect to Git).
 2. Build command: `npm run build` — Output directory: `dist`.
-3. En **Custom domains**, agregá `news-today.app` (y `www.news-today.app` si querés el subdominio) y seguí las instrucciones de DNS que te da Cloudflare.
-4. Cada commit que el nodo de GitHub haga a `main` dispara un redespliegue automático — no hace falta tocar nada más.
+3. Custom domains: `news-today.app` y `www.news-today.app`, DNS resuelto en Cloudflare (dominio comprado ahí mismo).
+4. Cada commit a `main` (los haga el pipeline o un push manual) dispara un redespliegue automático.
 
 ## Por qué esta arquitectura
 
