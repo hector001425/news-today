@@ -68,6 +68,12 @@
       "name": "Claude: resumir y traducir",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
+      "credentials": {
+        "anthropicApi": {
+          "id": "PZd6rC7na51xmdbR",
+          "name": "Anthropic account 2"
+        }
+      },
       "notes": "Requiere credencial Anthropic API (API key) configurada en n8n. Corre una vez por cada noticia extraída (n8n itera automáticamente sobre los items de entrada).",
       "position": [ -520, 0 ]
     },
@@ -95,8 +101,60 @@
       "type": "n8n-nodes-base.github",
       "typeVersion": 1,
       "continueOnFail": true,
+      "credentials": {
+        "githubApi": {
+          "id": "eEXU1BIl8VyzkUOM",
+          "name": "GitHub account 2"
+        }
+      },
       "notes": "Requiere credencial GitHub (token con permiso 'repo'). El slug es estable por noticia, así que si ya existe (misma noticia de una corrida anterior) GitHub rechaza el commit -> continueOnFail evita que eso rompa el resto del batch. Al hacer commit, Cloudflare Pages redespliega el sitio automaticamente.",
-      "position": [ -80, 0 ]
+      "position": [ -80, -100 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": { \"text\": {{ JSON.stringify($json.title + '. ' + $json.dek) }} },\n  \"voice\": { \"languageCode\": \"es-US\", \"name\": \"es-US-Neural2-B\" },\n  \"audioConfig\": { \"audioEncoding\": \"MP3\" }\n}"
+      },
+      "name": "Generar audio (TTS)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "continueOnFail": true,
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "2312cd06-ae42-43cb-abd0-5453af773923",
+          "name": "Google Cloud TTS (API key)"
+        }
+      },
+      "notes": "Google Cloud Text-to-Speech, voz neural en español. Devuelve { audioContent: <mp3 en base64> } en $json.audioContent -- listo para pasarle a Creatomate como data URI.",
+      "position": [ -80, 100 ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"template_id\": \"4a1d7b6a-0c13-423a-b37c-46211fbf5d2f\",\n  \"modifications\": {\n    \"titular\": {{ JSON.stringify($('Armar Markdown + frontmatter').item.json.title) }},\n    \"bajada\": {{ JSON.stringify($('Armar Markdown + frontmatter').item.json.dek) }},\n    \"audio\": \"data:audio/mp3;base64,{{ $json.audioContent }}\"\n  }\n}"
+      },
+      "name": "Generar video (Creatomate)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "continueOnFail": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "xwLglGQgTTo8Go2Q",
+          "name": "Header Auth account"
+        }
+      },
+      "notes": "Template 'News Today - Reel vertical' (9:16) con 3 elementos: titular, bajada, audio. El render es asíncrono -- esta llamada dispara el render y devuelve el estado inicial (planned/processing), no el video terminado. Revisar el resultado en el dashboard de Creatomate o el API Log. Publicación automática en redes queda para una fase 3.",
+      "position": [ 140, 100 ]
     }
   ],
   "connections": {
@@ -116,8 +174,16 @@
       "main": [ [ { "node": "Armar Markdown + frontmatter", "type": "main", "index": 0 } ] ]
     },
     "Armar Markdown + frontmatter": {
-      "main": [ [ { "node": "Publicar en GitHub (commit)", "type": "main", "index": 0 } ] ]
+      "main": [
+        [
+          { "node": "Publicar en GitHub (commit)", "type": "main", "index": 0 },
+          { "node": "Generar audio (TTS)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Generar audio (TTS)": {
+      "main": [ [ { "node": "Generar video (Creatomate)", "type": "main", "index": 0 } ] ]
     }
   },
-  "meta": { "templateNote": "Fase 1: búsqueda -> resumen/traducción con Claude -> commit a GitHub. TTS, video y redes sociales quedan para una fase 2. Requiere credenciales Anthropic API y GitHub configuradas en n8n antes de activar." }
+  "meta": { "templateNote": "Fase 1 (búsqueda -> Claude -> commit) + fase 2 completa (audio con Google Cloud TTS + video corto vertical con Creatomate). Publicación automática en redes sociales queda para una fase 3." }
 }
