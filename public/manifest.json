@@ -1,0 +1,12 @@
+{
+  "name": "News Today",
+  "short_name": "News Today",
+  "description": "Noticias de inteligencia artificial en español, generadas y curadas de forma automatizada.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#efebe2",
+  "theme_color": "#16171b",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

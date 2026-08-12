@@ -1,11 +1,11 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { getCollection, type CollectionEntry } from 'astro:content';
+import { getCollection, render, type CollectionEntry } from 'astro:content';
 
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
   return articles.map((article) => ({
-    params: { slug: article.slug },
+    params: { slug: article.id },
     props: { article },
   }));
 }
@@ -15,7 +15,7 @@ interface Props {
 }
 
 const { article } = Astro.props;
-const { Content } = await article.render();
+const { Content } = await render(article);
 
 const formatter = new Intl.DateTimeFormat('es', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 ---

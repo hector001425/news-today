@@ -34,9 +34,16 @@ const tickerItems = allArticles.slice(0, 8);
   <header class="masthead">
     <div class="masthead__row">
       <h1 class="masthead__title">News <span>Today</span></h1>
-      <div class="masthead__meta">
-        Actualizado automáticamente<br />
-        {formatter.format(new Date())}
+      <div class="masthead__meta-group">
+        <button type="button" id="install-btn" class="install-btn" hidden aria-label="Instalar app" title="Instalar app">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 19h14" />
+          </svg>
+        </button>
+        <div class="masthead__meta">
+          Actualizado automáticamente<br />
+          {formatter.format(new Date())}
+        </div>
       </div>
     </div>
     <p class="masthead__dek">
@@ -60,7 +67,7 @@ const tickerItems = allArticles.slice(0, 8);
           </time>
         </div>
         <h2 class="card__title">
-          <a href={`/articulos/${article.slug}/`}>{article.data.title}</a>
+          <a href={`/articulos/${article.id}/`}>{article.data.title}</a>
         </h2>
         <p class="card__dek">{article.data.dek}</p>
         <p class="card__source">Fuente: {article.data.source_name}</p>
@@ -72,4 +79,6 @@ const tickerItems = allArticles.slice(0, 8);
     <span>News Today — proyecto personal, contenido generado con apoyo de IA a partir de fuentes públicas</span>
     <span>news-today.app</span>
   </footer>
+
+  <script type="module" src="/install-pwa.js" defer></script>
 </Layout>
