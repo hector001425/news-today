@@ -128,20 +128,23 @@ button:focus-visible {
 .install-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 30px;
+  gap: 0.4rem;
   height: 30px;
-  padding: 0;
+  padding: 0 0.75rem 0 0.6rem;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: transparent;
   color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 .install-btn:hover { color: var(--wire); border-color: var(--wire); }
 .install-btn:focus-visible { outline: 2px solid var(--wire); outline-offset: 2px; }
 .install-btn[hidden] { display: none; }
+
+.install-btn__label { white-space: nowrap; }
 
 .masthead__dek {
   font-family: var(--font-body);
