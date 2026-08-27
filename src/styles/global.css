@@ -238,6 +238,8 @@ button:focus-visible {
 
 @media (max-width: 960px) {
   .layout { grid-template-columns: 1fr; }
+  .layout__aside { order: -1; }
+  .markets { position: static; }
 }
 
 /* ---------- Widget de Mercados ---------- */
