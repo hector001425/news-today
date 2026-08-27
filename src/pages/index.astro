@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import MarketsWidget from '../components/MarketsWidget.astro';
 import { getCollection } from 'astro:content';
 
 const allArticles = (await getCollection('articles')).sort(
@@ -52,29 +53,34 @@ const tickerItems = allArticles.slice(0, 8);
     </p>
   </header>
 
-  <main class="feed">
-    {allArticles.length === 0 && (
-      <p style="padding: 2rem; font-family: var(--font-mono); color: var(--ink-soft);">
-        Todavía no hay artículos. Agregá archivos .md en src/content/articles/ o conectá el pipeline de n8n descrito en /n8n.
-      </p>
-    )}
-    {allArticles.map((article) => (
-      <article class="card">
-        <div class="card__eyebrow">
-          {article.data.breaking && <span class="card__flash">Última hora</span>}
-          <span>{categoryLabels[article.data.category]}</span>
-          <time datetime={article.data.published_at.toISOString()}>
-            {formatter.format(article.data.published_at)}
-          </time>
-        </div>
-        <h2 class="card__title">
-          <a href={`/articulos/${article.id}/`}>{article.data.title}</a>
-        </h2>
-        <p class="card__dek">{article.data.dek}</p>
-        <p class="card__source">Fuente: {article.data.source_name}</p>
-      </article>
-    ))}
-  </main>
+  <div class="layout">
+    <main class="feed layout__main">
+      {allArticles.length === 0 && (
+        <p style="padding: 2rem; font-family: var(--font-mono); color: var(--ink-soft);">
+          Todavía no hay artículos. Agregá archivos .md en src/content/articles/ o conectá el pipeline de n8n descrito en /n8n.
+        </p>
+      )}
+      {allArticles.map((article) => (
+        <article class="card">
+          <div class="card__eyebrow">
+            {article.data.breaking && <span class="card__flash">Última hora</span>}
+            <span>{categoryLabels[article.data.category]}</span>
+            <time datetime={article.data.published_at.toISOString()}>
+              {formatter.format(article.data.published_at)}
+            </time>
+          </div>
+          <h2 class="card__title">
+            <a href={`/articulos/${article.id}/`}>{article.data.title}</a>
+          </h2>
+          <p class="card__dek">{article.data.dek}</p>
+          <p class="card__source">Fuente: {article.data.source_name}</p>
+        </article>
+      ))}
+    </main>
+    <aside class="layout__aside">
+      <MarketsWidget />
+    </aside>
+  </div>
 
   <footer class="site-footer">
     <span>News Today — proyecto personal, contenido generado con apoyo de IA a partir de fuentes públicas</span>

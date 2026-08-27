@@ -1,0 +1,45 @@
+---
+import marketsData from '../content/markets.json';
+
+interface MarketItem {
+  label: string;
+  value: string;
+  change_pct: string;
+  direction: 'up' | 'down';
+}
+
+const { items, ai_forecast, updated_at, example } = marketsData as {
+  items: MarketItem[];
+  ai_forecast?: string;
+  updated_at: string;
+  example?: boolean;
+};
+
+const formatter = new Intl.DateTimeFormat('es', {
+  day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+});
+---
+<aside class="markets" aria-label="Mercados">
+  <h2 class="markets__title">Mercados</h2>
+  {example && (
+    <p class="markets__notice">Vista previa — datos de ejemplo, pendiente conectar el feed en vivo.</p>
+  )}
+  <ul class="markets__list">
+    {items.map((item) => (
+      <li class="markets__row">
+        <span class="markets__label">{item.label}</span>
+        <span class="markets__value">
+          {item.value}
+          <span class={`markets__change markets__change--${item.direction}`}>{item.change_pct}</span>
+        </span>
+      </li>
+    ))}
+  </ul>
+  {ai_forecast && (
+    <div class="markets__forecast">
+      <p class="markets__forecast-label">Pronóstico IA</p>
+      <p class="markets__forecast-text">{ai_forecast}</p>
+    </div>
+  )}
+  <p class="markets__updated">Actualizado: {formatter.format(new Date(updated_at))}</p>
+</aside>

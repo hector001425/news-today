@@ -1,6 +1,9 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import MarketsWidget from '../../components/MarketsWidget.astro';
 import { getCollection, render, type CollectionEntry } from 'astro:content';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
@@ -18,26 +21,66 @@ const { article } = Astro.props;
 const { Content } = await render(article);
 
 const formatter = new Intl.DateTimeFormat('es', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+const audioPath = fileURLToPath(new URL(`../../../public/audio/${article.id}.mp3`, import.meta.url));
+const hasAudio = existsSync(audioPath);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'NewsArticle',
+  headline: article.data.title,
+  description: article.data.dek,
+  datePublished: article.data.published_at.toISOString(),
+  dateModified: article.data.published_at.toISOString(),
+  author: { '@type': 'Organization', name: 'News Today' },
+  publisher: { '@type': 'Organization', name: 'News Today', url: 'https://news-today.app' },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': `https://news-today.app/articulos/${article.id}/` },
+};
 ---
-<Layout title={`${article.data.title} — News Today`} description={article.data.dek}>
+<Layout
+  title={`${article.data.title} — News Today`}
+  description={article.data.dek}
+  type="article"
+  publishedTime={article.data.published_at}
+  jsonLd={jsonLd}
+>
   <header class="masthead">
     <div class="masthead__row">
       <a href="/" style="font-family: var(--font-mono); font-size: 0.8rem;">&larr; News Today</a>
     </div>
   </header>
-  <main style="max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem 4rem;">
-    <p style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em;">
-      {article.data.category} · {formatter.format(article.data.published_at)}
-    </p>
-    <h1 style="font-family: var(--font-display); font-size: clamp(1.8rem, 5vw, 2.6rem); line-height: 1.15; margin: 0.4rem 0 0.8rem;">
-      {article.data.title}
-    </h1>
-    <p style="font-size: 1.05rem; color: var(--ink-soft); margin-bottom: 1.6rem;">{article.data.dek}</p>
-    <div style="font-size: 1rem; line-height: 1.7;">
-      <Content />
-    </div>
-    <p style="margin-top: 2rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-soft);">
-      Fuente original: <a href={article.data.source_url} target="_blank" rel="noopener">{article.data.source_name}</a>
-    </p>
-  </main>
+  <div class="layout">
+    <main class="layout__main" style="max-width: 720px;">
+      <p style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.08em;">
+        {article.data.category} · {formatter.format(article.data.published_at)}
+      </p>
+      <h1 style="font-family: var(--font-display); font-size: clamp(1.8rem, 5vw, 2.6rem); line-height: 1.15; margin: 0.4rem 0 0.8rem;">
+        {article.data.title}
+      </h1>
+      <p style="font-size: 1.05rem; color: var(--ink-soft); margin-bottom: 1.6rem;">{article.data.dek}</p>
+
+      {article.data.video_url && (
+        <div class="article-media">
+          <p class="article-media__label">Video</p>
+          <video controls preload="none" src={article.data.video_url}></video>
+        </div>
+      )}
+      {hasAudio && (
+        <div class="article-media">
+          <p class="article-media__label">Escuchar la nota</p>
+          <audio controls preload="none" src={`/audio/${article.id}.mp3`}></audio>
+        </div>
+      )}
+
+      <div style="font-size: 1rem; line-height: 1.7;">
+        <Content />
+      </div>
+      <p style="margin-top: 2rem; font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-soft);">
+        Fuente original: <a href={article.data.source_url} target="_blank" rel="noopener">{article.data.source_name}</a>
+      </p>
+    </main>
+    <aside class="layout__aside">
+      <MarketsWidget />
+    </aside>
+  </div>
 </Layout>

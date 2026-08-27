@@ -4,9 +4,32 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description?: string;
+  type?: 'website' | 'article';
+  publishedTime?: Date;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
-const { title, description = 'Noticias de inteligencia artificial en español, generadas y curadas de forma automatizada.' } = Astro.props;
+const {
+  title,
+  description = 'Noticias de inteligencia artificial en español, generadas y curadas de forma automatizada.',
+  type = 'website',
+  publishedTime,
+  jsonLd,
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+const siteName = 'News Today';
+
+const defaultJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: siteName,
+  url: Astro.site?.href,
+  description: 'Noticias de inteligencia artificial en español, generadas y curadas de forma automatizada.',
+  publisher: { '@type': 'Organization', name: siteName, url: Astro.site?.href },
+};
+
+const jsonLdBlocks = [defaultJsonLd, ...(jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [])];
 ---
 <!doctype html>
 <html lang="es">
@@ -16,8 +39,26 @@ const { title, description = 'Noticias de inteligencia artificial en español, g
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="theme-color" content="#16171b" />
+    <link rel="canonical" href={canonicalURL} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.json" />
+    <link rel="alternate" type="application/rss+xml" title={siteName} href="/rss.xml" />
+
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:locale" content="es_ES" />
+    {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    {jsonLdBlocks.map((block) => (
+      <script type="application/ld+json" set:html={JSON.stringify(block)} />
+    ))}
   </head>
   <body>
     <slot />

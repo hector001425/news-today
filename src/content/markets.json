@@ -1,0 +1,15 @@
+{
+  "example": true,
+  "updated_at": "2026-08-26T22:19:00-06:00",
+  "ai_forecast": "Pronóstico IA (ejemplo): sesgo neutral en renta variable de EE. UU.; flujo hacia refugio en oro y cobre por incertidumbre de tasas. Reemplazar con la salida real del pipeline de n8n.",
+  "items": [
+    { "label": "Nasdaq", "value": "26.130,20", "change_pct": "-0,08%", "direction": "down" },
+    { "label": "S&P 500", "value": "7.675,70", "change_pct": "-0,02%", "direction": "down" },
+    { "label": "Dow Jones", "value": "53.463,88", "change_pct": "-0,21%", "direction": "down" },
+    { "label": "Bono 10 años", "value": "4,66%", "change_pct": "+3 bps", "direction": "up" },
+    { "label": "Bitcoin", "value": "78.813,35", "change_pct": "+0,32%", "direction": "up" },
+    { "label": "Oro", "value": "4.694,80", "change_pct": "+2,10%", "direction": "up" },
+    { "label": "Cobre", "value": "14.815,29", "change_pct": "+1,93%", "direction": "up" },
+    { "label": "Petróleo (WTI)", "value": "81,64", "change_pct": "-0,72%", "direction": "down" }
+  ]
+}
