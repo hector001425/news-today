@@ -1,5 +1,23 @@
 # Pipeline de automatización (n8n)
 
+## Pendientes (seguimiento activo)
+
+- **Confirmado funcionando en producción (2026-09-02):** ciclo completo de la VM — se prendió sola a las 12:00 PM Panamá, n8n corrió el pipeline (5 commits: 4 artículos + 1 audio) y se apagó sola después. Ver comandos de verificación más abajo en este README.
+- **Falta:** cambiar el nodo "Disparador programado (cada 6h)" a modo **Cron Expression** (`10 0,6,12,18 * * *`) en la UI de n8n — sigue en modo "Interval". Bloqueado porque las credenciales de n8n están en otra máquina del usuario. Funcionó igual en la corrida de hoy (disparó casi al instante del arranque), pero conviene alinearlo para que no dependa de esa coincidencia.
+- **Falta:** conectar datos de mercado en vivo al widget de `news-today` (`src/content/markets.json`, hoy con `example: true`). Plan acordado:
+  1. Usuario se registra en [Twelve Data](https://twelvedata.com) (plan gratis) y consigue API key — no lo puede hacer Claude.
+  2. Usuario corre 3 `curl` de prueba y pega la respuesta cruda (no se pudo probar desde esta sesión, el proxy bloquea `twelvedata.com`):
+     ```bash
+     curl "https://api.twelvedata.com/quote?symbol=IXIC,GSPC,DJI&apikey=TU_API_KEY"
+     curl "https://api.twelvedata.com/quote?symbol=BTC/USD&apikey=TU_API_KEY"
+     curl "https://api.twelvedata.com/quote?symbol=XAU/USD,XCU/USD,WTI/USD&apikey=TU_API_KEY"
+     ```
+  3. Con la respuesta real, armar el Code node de n8n que arma `markets.json` + prompt a Claude para el pronóstico + commit a GitHub (mismo patrón que "Publicar audio (commit)").
+  4. Bono del Tesoro a 10 años: Twelve Data probablemente no lo cubre bien — evaluar la API de FRED (serie `DGS10`, gratis, sin key) como fuente aparte, o dejarlo manual por ahora.
+- **PR #2** (`claude/vm-schedule-6h`) sigue sin mergear — solo tiene el cambio de intervalo (2h→6h) y este mismo README, sin riesgo, se puede mergear cuando el usuario quiera.
+
+---
+
 `news-today-pipeline.json` es el workflow real que corre en producción (no es solo una plantilla de ejemplo — es el que está importado y activo en la VM). Cubre **fase 1 y fase 2 completas**: búsqueda, redacción, publicación, audio y video. Falta **fase 3**: publicación automática en redes sociales.
 
 ```
