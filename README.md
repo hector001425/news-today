@@ -102,6 +102,39 @@ Cuerpo del artículo en Markdown.
 
 **Importante:** `published_at` va sin comillas — con comillas queda como string en vez de fecha nativa de YAML y rompe el build (`InvalidContentEntryFrontmatterError`, ya nos pasó una vez con el pipeline).
 
+## Widget de Mercados (sidebar)
+
+Sidebar (`src/components/MarketsWidget.astro`) con índices, materias primas y un bloque de "Pronóstico IA", inspirado en los resúmenes de mercado tipo Google Finance/Gmail. Aparece en la portada y en cada artículo.
+
+Hoy lee `src/content/markets.json`, que se commitea con `"example": true` y valores de muestra — el widget lo muestra con un aviso de "vista previa" para no hacer pasar datos viejos por datos en vivo. Para que sea en vivo, sin tocar el CSP (`connect-src 'self'` bloquea fetch a APIs externas desde el navegador a propósito, igual que con los artículos):
+
+1. Agregar un nodo al workflow de n8n (mismo patrón que la búsqueda de noticias) que consulte una API de mercados cada X minutos (ej. [Twelve Data](https://twelvedata.com/), [Alpha Vantage](https://www.alphavantage.co/) o [Stooq](https://stooq.com/db/h/), todas con plan gratis con límites).
+2. Un nodo Claude (igual que redacta los artículos) que tome esos números y escriba 1-2 frases de "pronóstico" — dejar claro en el prompt que es *comentario editorial generado por IA*, no asesoría financiera ni una orden de trading.
+3. Un nodo que commitee el resultado a `src/content/markets.json` (mismo formato: `items[]`, `ai_forecast`, `updated_at`) con `"example": false`, vía la API de contenidos de GitHub (igual que hace con `public/audio/*.mp3`).
+4. Cloudflare Pages redespliega solo con cada commit, como con los artículos.
+
+**Sobre "IA que haga trading":** el pipeline puede generar comentario/pronóstico de mercado sin problema (paso de arriba). Una IA que *ejecute* operaciones reales es un proyecto aparte — necesita cuenta de broker con API (ej. Alpaca, Interactive Brokers), gestión de riesgo, y activarla implica responsabilidad legal/financiera real. No está incluido acá; avisar si se quiere explorar eso puntualmente.
+
+## Video en los artículos
+
+`content.config.ts` ya acepta un campo opcional `video_url` en el frontmatter de cada artículo; si está presente, la página del artículo lo renderiza en un `<video>` arriba del cuerpo. Hoy ningún artículo lo tiene: el pipeline genera el reel vertical con Creatomate (ver `n8n/README.md`) pero nunca guarda esa URL en el repo, solo la usa para la fase 3 (redes sociales, pendiente).
+
+Para mostrarlo en el sitio: agregar un nodo al pipeline que, después de que Creatomate termine el render, guarde la URL resultante (o el archivo `.mp4`, como ya se hace con el audio) y la escriba en el frontmatter del artículo como `video_url`. Importante: si el video queda en un dominio externo (CDN de Creatomate, YouTube, etc.), hay que sumar ese origen a `media-src` en `public/_headers` — el CSP actual (`default-src 'self'`) lo bloquearía. Si en cambio se sube el `.mp4` a `public/`, funciona sin tocar el CSP, igual que el audio.
+
+## SEO e indexación
+
+Ya en el repo: `robots.txt` + `sitemap.xml` (con `lastmod` por artículo), `rss.xml`, meta `description`, Open Graph, Twitter Card, `<link rel="canonical">` y JSON-LD (`WebSite`/`Organization` en todo el sitio, `NewsArticle` en cada nota).
+
+Pasos para indexar el sitio (una sola vez, salvo que se aclare lo contrario):
+
+1. **Google Search Console** ([search.google.com/search-console](https://search.google.com/search-console)) → alta de propiedad `https://news-today.app` (verificación por DNS TXT o meta tag) → Sitemaps → enviar `https://news-today.app/sitemap.xml`.
+2. **Bing Webmaster Tools** ([bing.com/webmasters](https://www.bing.com/webmasters)) → mismo alta + sitemap (podés importar directo desde Search Console). Cubre también Yahoo y el buscador de Copilot/Bing Chat.
+3. **Indexación manual de URLs nuevas/urgentes**: en Search Console, "Inspección de URLs" → pegar la URL del artículo → "Solicitar indexación". Sirve para acelerar notas de último momento, no hace falta para cada artículo.
+4. **Validar structured data**: pasar una URL de artículo por el [Rich Results Test](https://search.google.com/test/rich-results) de Google para confirmar que el `NewsArticle` JSON-LD se lee bien.
+5. **Core Web Vitals / rendimiento**: correr el sitio por [PageSpeed Insights](https://pagespeed.web.dev/) — el sitio es Astro estático así que debería salir bien, pero conviene chequear después de sumar el sidebar de mercados (imágenes/fuentes nuevas pueden pesar).
+6. **Google News** (más adelante, opcional): para aparecer en Google News hace falta más que el sitemap — hay que dar de alta el sitio en [Google Publisher Center](https://publishercenter.google.com/) y cumplir sus políticas de contenido (autoría clara, contenido original, etc.). Como todo el contenido acá es generado/traducido por IA a partir de fuentes de terceros, conviene revisar esa política antes de aplicar — Google puede rechazar o penalizar sitios que no dejen claro el origen automatizado.
+7. **Seguimiento**: una vez indexado, Search Console muestra clics/impresiones/posición por página — repasarlo cada tanto para ver qué categorías de artículos traen tráfico.
+
 ## Despliegue
 
 Pensado para **Cloudflare Pages** (build: `npm run build`, output: `dist`), con el dominio propio `news-today.app` conectado como Custom Domain — ver instrucciones paso a paso en `n8n/README.md`. También podés usar Vercel o GitHub Pages sin cambios, ya que es un sitio estático estándar.

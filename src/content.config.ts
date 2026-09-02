@@ -12,6 +12,7 @@ const articles = defineCollection({
     published_at: z.date(),
     breaking: z.boolean().default(false),
     generated_by: z.enum(['pipeline', 'manual']).default('manual'),
+    video_url: z.string().url().optional(),
   }),
 });
 
