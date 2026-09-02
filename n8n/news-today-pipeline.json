@@ -4,9 +4,9 @@
   "nodes": [
     {
       "parameters": {
-        "rule": { "interval": [ { "field": "hours", "hoursInterval": 2 } ] }
+        "rule": { "interval": [ { "field": "hours", "hoursInterval": 6 } ] }
       },
-      "name": "Disparador programado (cada 2h)",
+      "name": "Disparador programado (cada 6h)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [ -1400, 0 ]
@@ -181,7 +181,7 @@
     }
   ],
   "connections": {
-    "Disparador programado (cada 2h)": {
+    "Disparador programado (cada 6h)": {
       "main": [ [ { "node": "Buscar noticias (RSS)", "type": "main", "index": 0 } ] ]
     },
     "Buscar noticias (RSS)": {
