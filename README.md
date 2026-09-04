@@ -7,7 +7,7 @@ Dominio: **news-today.app**
 ## Estado actual (roadmap)
 
 ### ✅ Fase 1 — Pipeline base (en producción)
-Búsqueda de noticias (Google News RSS, IA/LLM/data/tecnología) → Claude resume, traduce y categoriza → commit automático a GitHub → Cloudflare Pages redespliega el sitio solo. Corre cada 2h sin intervención (schedule trigger activo en n8n).
+Búsqueda de noticias (Google News RSS, IA/LLM/data/tecnología) → Claude resume, traduce y categoriza → commit automático a GitHub → Cloudflare Pages redespliega el sitio solo. Corre cada 6h sin intervención (schedule trigger activo en n8n) — la VM se prende/apaga sola alrededor de esa ventana para no quedar corriendo 24/7, ver `n8n/README.md`.
 
 ### ✅ Fase 2 — Audio y video (en producción)
 Cada artículo genera su narración en español con **Google Cloud TTS** (voz neural `es-US-Neural2-B`) y un reel vertical 9:16 con **Creatomate** (template "News Today - Reel vertical": titular + bajada + audio), commiteados y renderizados automáticamente.

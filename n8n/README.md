@@ -1,9 +1,27 @@
 # Pipeline de automatización (n8n)
 
+## Pendientes (seguimiento activo)
+
+- **Confirmado funcionando en producción (2026-09-02):** ciclo completo de la VM — se prendió sola a las 12:00 PM Panamá, n8n corrió el pipeline (5 commits: 4 artículos + 1 audio) y se apagó sola después. Ver comandos de verificación más abajo en este README.
+- **Falta:** cambiar el nodo "Disparador programado (cada 6h)" a modo **Cron Expression** (`10 0,6,12,18 * * *`) en la UI de n8n — sigue en modo "Interval". Bloqueado porque las credenciales de n8n están en otra máquina del usuario. Funcionó igual en la corrida de hoy (disparó casi al instante del arranque), pero conviene alinearlo para que no dependa de esa coincidencia.
+- **Falta:** conectar datos de mercado en vivo al widget de `news-today` (`src/content/markets.json`, hoy con `example: true`). Plan acordado:
+  1. Usuario se registra en [Twelve Data](https://twelvedata.com) (plan gratis) y consigue API key — no lo puede hacer Claude.
+  2. Usuario corre 3 `curl` de prueba y pega la respuesta cruda (no se pudo probar desde esta sesión, el proxy bloquea `twelvedata.com`):
+     ```bash
+     curl "https://api.twelvedata.com/quote?symbol=IXIC,GSPC,DJI&apikey=TU_API_KEY"
+     curl "https://api.twelvedata.com/quote?symbol=BTC/USD&apikey=TU_API_KEY"
+     curl "https://api.twelvedata.com/quote?symbol=XAU/USD,XCU/USD,WTI/USD&apikey=TU_API_KEY"
+     ```
+  3. Con la respuesta real, armar el Code node de n8n que arma `markets.json` + prompt a Claude para el pronóstico + commit a GitHub (mismo patrón que "Publicar audio (commit)").
+  4. Bono del Tesoro a 10 años: Twelve Data probablemente no lo cubre bien — evaluar la API de FRED (serie `DGS10`, gratis, sin key) como fuente aparte, o dejarlo manual por ahora.
+- **PR #2** (`claude/vm-schedule-6h`) sigue sin mergear — solo tiene el cambio de intervalo (2h→6h) y este mismo README, sin riesgo, se puede mergear cuando el usuario quiera.
+
+---
+
 `news-today-pipeline.json` es el workflow real que corre en producción (no es solo una plantilla de ejemplo — es el que está importado y activo en la VM). Cubre **fase 1 y fase 2 completas**: búsqueda, redacción, publicación, audio y video. Falta **fase 3**: publicación automática en redes sociales.
 
 ```
-Cada 2h → buscar noticias (IA / LLM / data / tecnología, RSS Google News)
+Cada 6h → buscar noticias (IA / LLM / data / tecnología, RSS Google News)
     → convertir RSS a JSON → extraer hasta 5 items (slug estable por hash del link)
     → por cada noticia:
         Claude resume, traduce y categoriza
@@ -19,7 +37,7 @@ Cada 2h → buscar noticias (IA / LLM / data / tecnología, RSS Google News)
 
 | Nodo | Qué hace |
 |---|---|
-| Disparador programado (cada 2h) | Schedule Trigger — dispara todo el flujo |
+| Disparador programado (cada 6h) | Schedule Trigger — dispara todo el flujo |
 | Buscar noticias (RSS) | GET a Google News RSS filtrado a IA/LLM/data/tech, últimas 24h |
 | Convertir RSS a JSON | Nodo XML nativo de n8n |
 | Extraer items del RSS | Code node — aplana hasta 5 noticias, calcula `slug` estable (hash del link + título) |
@@ -54,6 +72,34 @@ Con el túnel abierto, la UI queda en `http://localhost:5678`. Cloud NAT (`nat-r
 | Publicar en GitHub / Publicar audio | GitHub API (token fine-grained, permiso `Contents: Read and write` solo sobre `news-today`) | github.com/settings/personal-access-tokens |
 | Generar audio (TTS) | Header/Query Auth (API key restringida solo a `texttospeech.googleapis.com`) | Mismo proyecto GCP (`news-today-pipeline`) |
 | Generar video (Creatomate) | Header Auth (`Authorization: Bearer <key>`) | creatomate.com — template id `4a1d7b6a-0c13-423a-b37c-46211fbf5d2f` ("News Today - Reel vertical", plan gratis, 270×480) |
+
+## Apagado/encendido automático de la VM (bajar costo)
+
+La VM corre 24/7 hoy aunque el pipeline solo la necesita unos minutos cada corrida. Para que se prenda sola cada 6h, corra el pipeline una vez, y se apague — en vez de quedar prendida todo el día:
+
+**1. Instance Schedule de Compute Engine** (prende/apaga la VM sola, sin tocar n8n):
+
+```bash
+gcloud compute resource-policies create instance-schedule news-today-6h \
+  --project=news-today-pipeline \
+  --region=us-central1 \
+  --vm-start-schedule="0 */6 * * *" \
+  --vm-stop-schedule="40 */6 * * *" \
+  --timezone="America/Panama"
+
+gcloud compute instances add-resource-policies n8n-news-today \
+  --project=news-today-pipeline \
+  --zone=us-central1-a \
+  --resource-policies=news-today-6h
+```
+
+Esto prende la VM a las 00:00/06:00/12:00/18:00 y la apaga 40 min después — ajustar la ventana según cuánto tarda en la práctica una corrida (mirar el historial de ejecuciones en n8n). El Docker Compose de n8n tiene que arrancar solo al bootear la VM (`restart: unless-stopped` o `always` en el compose, y el propio Docker con `systemctl enable docker`) — si ya arranca solo hoy después de un reboot manual, no hay que tocar nada ahí.
+
+**2. Importante — alinear el disparador de n8n con la ventana de encendido.** El Schedule Trigger del workflow ("cada 6h", ya actualizado en `news-today-pipeline.json`) calcula su próximo disparo desde que se activó/reinició n8n — con la VM apagándose y prendiéndose, ese cálculo puede desalinearse y el disparo caer fuera de la ventana en que la VM está prendida. Para que sea confiable, cambiar el nodo **directo en la UI de n8n** (no hace falta reimportar el JSON) de modo "Interval" a modo **"Cron Expression"**, con una hora fija que caiga unos minutos después del horario de arranque de la VM, por ejemplo `10 0,6,12,18 * * *` (dispara a la :10, dándole 10 min de margen a que Docker/n8n terminen de levantar). Confirmar antes cuál es el `GENERIC_TIMEZONE` configurado en el contenedor de n8n, para que la hora del cron coincida con el `--timezone` del Instance Schedule.
+
+**3. Costo**: apagar la VM ~22 de las 24h del día corta el gasto de cómputo (el disco persistente se sigue facturando igual, prendida o apagada, pero es una fracción menor del costo total de una `e2-small`).
+
+**Nota:** estos comandos no se ejecutaron desde acá — hay que correrlos con `gcloud` autenticado contra el proyecto `news-today-pipeline` (por ejemplo desde la máquina donde ya tenés el túnel IAP configurado).
 
 ## Fase 3 — publicación en redes sociales (pendiente)
 
