@@ -57,7 +57,7 @@ const jsonLdBlocks = [defaultJsonLd, ...(jsonLd ? (Array.isArray(jsonLd) ? jsonL
     <meta name="twitter:description" content={description} />
 
     {jsonLdBlocks.map((block) => (
-      <script type="application/ld+json" set:html={JSON.stringify(block)} />
+      <script type="application/ld+json" set:html={JSON.stringify(block).replace(/</g, '\\u003c')} />
     ))}
   </head>
   <body>
